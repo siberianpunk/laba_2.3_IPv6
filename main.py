@@ -1,6 +1,5 @@
 ﻿import re
 import requests
-import ipaddress
 import unittest
 
 
@@ -34,15 +33,59 @@ IPV6_REGEX = re.compile(
 
 
 def find_ipv6(text):
-    """Ищет IPv6 адреса в строке и валидирует их через модуль ipaddress."""
-    # 1. Ищем все совпадения по регулярному выражению
+    """Ищет IPv6 адреса в строке."""
     matches = IPV6_REGEX.findall(text)
     valid_ips = []
     for match in matches:
         candidate = match[0] if isinstance(match, tuple) else match
         valid_ips.append(candidate)
-        
     return list(set(valid_ips))
+
+
+def print_results(results):
+    """Красиво печатает найденные адреса."""
+    if results:
+        print(f"\nНайдено IPv6-адресов: {len(results)}")
+        for ip in sorted(results):
+            print(f"  • {ip}")
+    else:
+        print("\nIPv6-адреса не найдены.")
+
+
+def search_in_text():
+    print("Ведите текст")
+    text = input("> ")
+    print_results(find_ipv6(text))
+
+
+def search_in_file():
+    filepath = input("Введите путь к файлу: ").strip().strip('"').strip("'")
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+        print_results(find_ipv6(content))
+    except FileNotFoundError:
+        print(f"Ошибка: файл не найден — {filepath}")
+    except UnicodeDecodeError:
+        print("Ошибка: файл не является текстовым (не UTF-8)")
+    except Exception as e:
+        print(f"Ошибка при чтении файла: {e}")
+
+
+def search_in_url():
+    url = input("Введите URL (например, https://example.com): ").strip()
+    # Для доступа к википедии (https://ru.wikipedia.org/wiki/IPv6-%D0%B0%D0%B4%D1%80%D0%B5%D1%81):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    try:
+        response = requests.get(url, headers = headers, timeout=10)
+        response.raise_for_status()
+        print_results(find_ipv6(response.text))
+    except requests.exceptions.Timeout:
+        print("Ошибка: истекло время ожидания ответа")
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка загрузки страницы: {e}")
 
 
 class TestIPv6Regex(unittest.TestCase):
@@ -65,12 +108,12 @@ class TestIPv6Regex(unittest.TestCase):
     def test_invalid_ipv6(self):
         """Некорректные адреса"""
         invalid_ips = [
-            "2001:0db8:85a3:0000:0000:8a2e:0370:7334:1234", # Избыток групп
-            "2001:db8:::1",                                # Тройное двоеточие
-            "12345::1",                                    # Группа больше 4 символов
-            "192.168.1.1",                                 # Это IPv4
+            "2001:0db8:85a3:0000:0000:8a2e:0370:7334:1234",
+            "2001:db8:::1",
+            "12345::1",
+            "192.168.1.1",
             "hello:world",
-            "2001:db8:85a3:0000:0000:8a2e:0370:733g"       # Недопустимый символ 'g'
+            "2001:db8:85a3:0000:0000:8a2e:0370:733g"
         ]
         for ip in invalid_ips:
             with self.subTest(ip=ip):
@@ -87,21 +130,32 @@ class TestIPv6Regex(unittest.TestCase):
 
 def main():
     while True:
+        print("\n" + "=" * 40)
         print("ПОИСК И ПРОВЕРКА IPv6 АДРЕСОВ")
-        print("="*40)
-        print("1. Unit - тестирование")
+        print("=" * 40)
+        print("1. Поиск в пользовательском вводе")
+        print("2. Поиск на веб-странице (URL)")
+        print("3. Поиск в файле")
+        print("4. Unit-тестирование")
+        print("0. Выход")
 
-        choice = input("Выберите действие: ")
-        
-        if choice == '1':
+        choice = input("Выберите действие: ").strip()
+
+        if choice == "1":
+            search_in_text()
+        elif choice == "2":
+            search_in_url()
+        elif choice == "3":
+            search_in_file()
+        elif choice == "4":
             print("\nЗапуск тестов...\n")
-            unittest.main(argv=['first-arg-is-ignored'], exit=False)
-        elif choice == '0':
+            unittest.main(argv=["first-arg-is-ignored"], exit=False)
+        elif choice == "0":
             print("Выход из программы.")
             break
         else:
             print("Неверный ввод. Попробуйте снова.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
